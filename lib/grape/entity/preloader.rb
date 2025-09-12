@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "preloader/version"
+require_relative 'preloader/version'
 
 module Grape
   module Entity
