@@ -3,6 +3,7 @@
 require 'grape-entity'
 require_relative 'preloader/version'
 require_relative 'preloader/entity'
+require_relative 'preloader/options'
 require_relative 'preloader/exposure/base'
 
 module Grape
