@@ -33,4 +33,4 @@ module Grape
   end
 end
 
-Grape::Entity::Exposure::Base.include(Grape::Entity::Preloader::Exposure::Base)
+Grape::Entity::Exposure::Base.prepend(Grape::Entity::Preloader::Exposure::Base)
