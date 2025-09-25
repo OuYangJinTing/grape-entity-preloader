@@ -7,11 +7,23 @@ module Grape
         module Base # rubocop:disable Style/Documentation
           extend ActiveSupport::Concern
 
-          attr_reader :preload
+          attr_reader :preload_association, :preload_callback
 
           def initialize(_attribute, options, _conditions)
-            @preload = options[:preload]
-            raise ArgumentError, 'The :preload option must be a Symbol.' if @preload && !@preload.is_a?(Symbol)
+            @preload_association = options[:preload_association]
+            @preload_callback = options[:preload_callback]
+
+            if @preload_association && !@preload_association.is_a?(Symbol)
+              raise ArgumentError, 'The :preload_association option must be a Symbol.'
+            end
+
+            if @preload_callback && !@preload_callback.is_a?(Proc)
+              raise ArgumentError, 'The :preload_callback option must be a Proc.'
+            end
+
+            if @preload_association && @preload_callback
+              raise ArgumentError, 'The :preload_association and :preload_callback options cannot be used together.'
+            end
 
             super
           end
