@@ -8,7 +8,7 @@ module Grape
 
         module ClassMethods # rubocop:disable Style/Documentation
           def represent(objects, options = {})
-            options = Options.new(options) unless options.is_a?(Options)
+            options = Grape::Entity::Options.new(options) unless options.is_a?(Grape::Entity::Options)
             Preloader.new(root_exposures, objects, options).call if options.delete(:enable_preloader)
             super(objects, options)
           end
@@ -18,5 +18,5 @@ module Grape
   end
 end
 
-Grape::Entity.include(Grape::Entity::Preloader::Entity)
+Grape::Entity.prepend(Grape::Entity::Preloader::Entity)
 silence_warnings { Grape::Entity::OPTIONS = (Grape::Entity::OPTIONS + %i[preload_association preload_callback]).freeze }
