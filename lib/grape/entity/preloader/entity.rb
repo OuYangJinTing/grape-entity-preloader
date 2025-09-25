@@ -7,10 +7,10 @@ module Grape
         extend ActiveSupport::Concern
 
         module ClassMethods # rubocop:disable Style/Documentation
-          def preload_and_represent(objects, options = {})
+          def represent(objects, options = {})
             options = Options.new(options) unless options.is_a?(Options)
-            Preloader.new(root_exposures, objects, options).call
-            represent(objects, options)
+            Preloader.new(root_exposures, objects, options).call if options.delete(:enable_preloader)
+            super(objects, options)
           end
         end
       end

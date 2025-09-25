@@ -2,7 +2,6 @@
 
 require 'grape-entity'
 require_relative 'preloader/version'
-require_relative 'preloader/endpoint'
 require_relative 'preloader/entity'
 require_relative 'preloader/exposure/base'
 
