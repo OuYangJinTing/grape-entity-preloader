@@ -33,7 +33,7 @@ module Grape
             end
             callback_objects = exposure.preload_callback.call(association_objects)
 
-            if exposure.is_a?(Exposure::RepresentExposure)
+            if exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
               Preloader.new(exposure.using_class.root_exposures, callback_objects, options).call
             end
           end
@@ -57,9 +57,9 @@ module Grape
           # Dynamic keys are difficult to handle and less used, skipped directly
           next if key_of_exposure.respond_to?(:call)
 
-          if exposure.is_a?(Exposure::NestingExposure)
+          if exposure.is_a?(Grape::Entity::Exposure::NestingExposure)
             extract_preload_options(exposure.nested_exposures, options.for_nesting(key_of_exposure), associations, exposures_with_callback)
-          elsif exposure.is_a?(Exposure::RepresentExposure) && new_associations
+          elsif exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) && new_associations
             extract_preload_options(exposure.using_class.root_exposures, options.for_nesting(key_of_exposure), new_associations, exposures_with_callback)
           end
         end
