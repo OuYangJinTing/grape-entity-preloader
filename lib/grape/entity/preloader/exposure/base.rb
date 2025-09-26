@@ -12,20 +12,25 @@ module Grape
           def initialize(_attribute, options, _conditions)
             @preload_association = options[:preload_association]
             @preload_callback = options[:preload_callback]
+            validate_preload_options
 
-            if @preload_association && !@preload_association.is_a?(Symbol)
+            super
+          end
+
+          private
+
+          def validate_preload_options
+            if preload_association && !preload_association.is_a?(Symbol)
               raise ArgumentError, 'The :preload_association option must be a Symbol.'
             end
 
-            if @preload_callback && !@preload_callback.is_a?(Proc)
+            if preload_callback && !preload_callback.is_a?(Proc)
               raise ArgumentError, 'The :preload_callback option must be a Proc.'
             end
 
-            if @preload_association && @preload_callback
-              raise ArgumentError, 'The :preload_association and :preload_callback options cannot be used together.'
-            end
+            return unless preload_association && preload_callback
 
-            super
+            raise ArgumentError, 'The :preload_association and :preload_callback options cannot be used together.'
           end
         end
       end
