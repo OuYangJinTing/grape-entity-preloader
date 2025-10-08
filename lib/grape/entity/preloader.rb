@@ -55,7 +55,7 @@ module Grape
           next if association_objects.empty?
 
           exposures_with_options.each do |exposure, options|
-            callback_objects = exposure.preload_callback.call(association_objects)
+            callback_objects = exposure.preload_callback.call(association_objects, options)
             if exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
               Preloader.new(exposure.using_class.root_exposures, callback_objects, options).call
             end
@@ -66,6 +66,7 @@ module Grape
       def extract_preload_options(exposures, options, associations) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
         exposures.each do |exposure|
           next unless exposure.should_return_key?(options)
+          next if exposure.preload_condition && !exposure.preload_condition.call(options)
 
           if exposure.preload_callback
             callbacks[nested_association_chain.dup] << [exposure, options]

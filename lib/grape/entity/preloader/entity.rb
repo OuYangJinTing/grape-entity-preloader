@@ -19,4 +19,6 @@ module Grape
 end
 
 Grape::Entity.prepend(Grape::Entity::Preloader::Entity)
-silence_warnings { Grape::Entity::OPTIONS = (Grape::Entity::OPTIONS + %i[preload_association preload_callback]).freeze }
+silence_warnings do
+  Grape::Entity::OPTIONS = (Grape::Entity::OPTIONS + %i[preload_association preload_callback preload_condition]).freeze
+end
