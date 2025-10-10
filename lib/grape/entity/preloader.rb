@@ -85,12 +85,13 @@ module Grape
               associations
             )
           elsif exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) && associations[exposure.preload_association]
-            nested_association_chain << exposure.preload_association
+            nested_association_chain.push(exposure.preload_association)
             extract_preload_options(
               exposure.using_class.root_exposures,
               options.for_nesting(key_of_exposure),
               associations[exposure.preload_association]
             )
+            nested_association_chain.pop
           end
         end
       end
