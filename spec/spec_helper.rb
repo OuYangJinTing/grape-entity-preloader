@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
+require 'sqlite3'
+require 'active_record'
+require 'db-query-matchers'
 require 'grape/entity/preloader'
+
+ActiveRecord::Base.establish_connection(adapter: 'sqlite3', database: ':memory:')
+# ActiveRecord::Base.logger = Logger.new($stdout)
+
+Dir[File.join(File.dirname(__FILE__), 'support', '**', '*.rb')].sort.each { |f| require f }
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

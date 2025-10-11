@@ -1,2 +1,17 @@
+plugins:
+  - rubocop-rspec
+  - rubocop-rake
+  - rubocop-performance
+  - rubocop-thread_safety
+
 AllCops:
   TargetRubyVersion: 3.2
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Enabled: false
