@@ -8,8 +8,49 @@ require_relative 'preloader/exposure/base'
 
 module Grape
   class Entity
-    class Preloader # rubocop:disable Style/Documentation
+    class Preloader # rubocop:disable Style/Documentation,Metrics/ClassLength
       attr_reader :exposures, :objects, :options, :associations, :callbacks, :nested_association_chain
+
+      singleton_class.attr_accessor :enabled
+      self.enabled = false
+
+      def self.enabled!
+        self.enabled = true
+      end
+
+      def self.enabled?
+        if ActiveSupport::IsolatedExecutionState.key?(:grape_entity_preloader)
+          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+        else
+          enabled
+        end
+      end
+
+      def self.with_enable
+        return yield if enabled?
+
+        old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = true
+        yield
+        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value unless old_value.nil?
+      end
+
+      def self.disabled!
+        self.enabled = false
+      end
+
+      def self.disabled?
+        !enabled
+      end
+
+      def self.with_disable
+        return yield if disabled?
+
+        old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = false
+        yield
+        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value unless old_value.nil?
+      end
 
       def self.activerecord_gte_7_0?
         unless defined?(ActiveRecord) && ActiveRecord.respond_to?(:version) && ActiveRecord.version >= Gem::Version.new('7.0')
