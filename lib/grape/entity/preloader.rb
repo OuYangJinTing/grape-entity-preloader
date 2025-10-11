@@ -31,8 +31,14 @@ module Grape
 
         old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
         ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = true
+
         yield
-        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value unless old_value.nil?
+
+        if old_value.nil?
+          ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
+        else
+          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+        end
       end
 
       def self.disabled!
@@ -40,7 +46,7 @@ module Grape
       end
 
       def self.disabled?
-        !enabled
+        !enabled?
       end
 
       def self.with_disable
@@ -48,8 +54,14 @@ module Grape
 
         old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
         ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = false
+
         yield
-        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value unless old_value.nil?
+
+        if old_value.nil?
+          ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
+        else
+          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+        end
       end
 
       def self.activerecord_gte_7_0?

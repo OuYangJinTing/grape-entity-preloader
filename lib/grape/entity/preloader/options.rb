@@ -7,7 +7,7 @@ module Grape
         extend ActiveSupport::Concern
 
         included do
-          def_delegators :opts_hash, :delete
+          def_delegators :opts_hash, :delete, :[]=
         end
       end
     end
