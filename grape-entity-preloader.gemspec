@@ -8,13 +8,13 @@ Gem::Specification.new do |spec|
   spec.authors = ['OuYangJinTing']
   spec.email = ['Ou.Yang.Jin.Ting.X@gmail.com']
 
-  spec.summary = 'TODO: Write a short summary, because RubyGems requires one.'
-  spec.description = 'TODO: Write a longer description or delete this line.'
+  spec.summary = 'Grape::Entity::Preloader allows preload associations and callbacks for avoiding N+1 operations in Grape::Entity.'
+  spec.description = spec.summary
   spec.homepage = 'https://github.com/OuYangJinTing/grape-entity-preloader'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.2.0'
 
-  spec.metadata['allowed_push_host'] = "TODO: Set to your gem server 'https://example.com'"
+  spec.metadata['allowed_push_host'] = 'https://github.com/OuYangJinTing/grape-entity-preloader'
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/OuYangJinTing/grape-entity-preloader'
   spec.metadata['changelog_uri'] = 'https://github.com/OuYangJinTing/grape-entity-preloader/blob/main/CHANGELOG.md'
