@@ -1,28 +1,173 @@
 # Grape::Entity::Preloader
 
-TODO: Delete this and the text below, and describe your gem
-
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/grape/entity/preloader`. To experiment with that code, run `bin/console` for an interactive prompt.
+Grape::Entity::Preloader allows preload associations and callbacks for avoiding N+1 operations in Grape::Entity.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
 ```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+bundle add grape-entity-preloader
 ```
 
 If bundler is not being used to manage dependencies, install the gem by executing:
 
 ```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+gem install grape-entity-preloader
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+### Activation
+
+#### Global Activation
+
+You can enable the preloader globally. This is useful in environments where you want preloading to be the default behavior.
+
+```ruby
+# config/initializers/grape_entity_preloader.rb
+Grape::Entity::Preloader.enabled!
+```
+
+#### Local Activation and Deactivation
+
+You can control preloading for specific `represent` calls.
+
+##### 1. Using options
+
+Pass `grape_entity_preloader: :enabled` or `grape_entity_preloader: :disabled` to the options hash. This overrides the global setting.
+
+```ruby
+# Locally enable
+MyEntity.represent(users, grape_entity_preloader: :enabled)
+
+# Locally disable
+MyEntity.represent(users, grape_entity_preloader: :disabled)
+```
+
+##### 2. Using a block
+
+For a specific block of code, you can use `with_enable` or `with_disable`. This is useful in contexts like API endpoints or middlewares.
+
+```ruby
+Grape::Entity::Preloader.with_enable do
+  # Preloading is enabled for all represent calls inside this block
+  MyAPI::Entities::User.represent(User.all)
+end
+
+Grape::Entity::Preloader.with_disable do
+  # Preloading is disabled for all represent calls inside this block
+  MyAPI::Entities::User.represent(User.all)
+end
+```
+
+### `preload_association`
+
+Use `preload_association` to preload ActiveRecord associations. This helps to avoid N+1 queries when an exposure represents an association.
+
+```ruby
+class UserEntity < Grape::Entity
+  expose :id
+  expose :name
+  # This will preload the `books` association for all users being represented.
+  expose :books, using: BookEntity, preload_association: :books
+end
+
+# In your API
+users = User.limit(10)
+# When UserEntity represents users, it will execute two queries:
+# 1. SELECT * FROM users LIMIT 10
+# 2. SELECT * FROM books WHERE books.user_id IN (...)
+UserEntity.represent(users)
+```
+
+For nested preloading:
+
+```ruby
+class BookEntity < Grape::Entity
+  expose :id
+  expose :title
+  # This will preload tags for each book
+  expose :tags, using: TagEntity, preload_association: :tags
+end
+
+class UserEntity < Grape::Entity
+  expose :id
+  expose :name
+  expose :books, using: BookEntity, preload_association: :books
+end
+
+# It will generate 3 queries instead of 1 + 10 (for books) + N (for tags)
+UserEntity.represent(User.limit(10))
+```
+
+### `preload_callback`
+
+For more complex scenarios that `preload_association` doesn't cover (e.g., loading data from other services, custom caching logic), you can use `preload_callback`.
+
+It must be a `Proc` that accepts two arguments:
+1. `objects`: An array of the parent objects being represented.
+2. `options`: The `Grape::Entity::Options` object for the current representation context.
+
+**The `Proc` should return an array of objects that will be used for the nested entity representation. These returned objects will then be passed to the preloader for that nested entity, allowing for further nested preloading.**
+
+```ruby
+class UserStatsEntity < Grape::Entity
+  expose :likes
+  expose :followers
+end
+
+class UserEntity < Grape::Entity
+  expose :id
+  expose :name
+
+  expose :stats, using: UserStatsEntity, preload_callback: ->(users, _options) do
+    # `users` is an array of User objects.
+    # Here you can fetch stats for all users in one batch.
+    user_ids = users.map(&:id)
+    stats_data = StatsService.batch_get_by_user_ids(user_ids) # returns a hash { user_id => stats_object }
+
+    # The preloader needs to associate the loaded data back to the original objects.
+    # A common pattern is to attach the data to a new attribute on the object.
+    users.each { |user| user.instance_variable_set(:@stats, stats_data[user.id]) }
+
+    # The block must return the objects that will be presented by the nested entity.
+    # In this case, it's the stats objects we just loaded.
+    users.map { |user| user.instance_variable_get(:@stats) }
+  end
+end
+
+# In the entity, you need to define how to access the preloaded data.
+class UserEntity < Grape::Entity
+  # ...
+  expose :stats, using: UserStatsEntity, preload_callback: ... do |user, _options|
+    user.instance_variable_get(:@stats)
+  end
+end
+```
+
+### `preload_condition`
+
+Use `preload_condition` to conditionally enable or disable preloading for an exposure. It must be a `Proc` that accepts one argument: `options`, which is the `Grape::Entity::Options` object.
+
+If the `Proc` returns a falsy value, preloading for that exposure will be skipped.
+
+```ruby
+class UserEntity < Grape::Entity
+  expose :id
+  expose :name
+
+  # The :audit_log association will only be preloaded if `include_audit_log` is true in the options.
+  expose :audit_log,
+         using: AuditLogEntity,
+         preload_association: :audit_log,
+         preload_condition: ->(options) { options[:include_audit_log] }
+end
+
+# Preloading for :audit_log is skipped
+UserEntity.represent(user)
+
+# Preloading for :audit_log is executed
+UserEntity.represent(user, include_audit_log: true)
+```
 
 ## Development
 
