@@ -1,5 +1,8 @@
 # Grape::Entity::Preloader
 
+[![Ruby](https://github.com/OuYangJinTing/grape-entity-preloader/actions/workflows/main.yml/badge.svg)](https://github.com/OuYangJinTing/grape-entity-preloader/actions/workflows/main.yml)
+[![Gem Version](https://badge.fury.io/rb/grape-entity-preloader.svg?icon=si%3Arubygems&icon_color=%23ff0000)](https://badge.fury.io/rb/grape-entity-preloader)
+
 Grape::Entity::Preloader allows preload associations and callbacks for avoiding N+1 operations in Grape::Entity.
 
 ## Installation
