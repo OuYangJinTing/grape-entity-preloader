@@ -33,21 +33,6 @@ Grape::Entity::Preloader.enabled!
 #### Local Activation and Deactivation
 
 You can control preloading for specific `represent` calls.
-
-##### 1. Using options
-
-Pass `grape_entity_preloader: :enabled` or `grape_entity_preloader: :disabled` to the options hash. This overrides the global setting.
-
-```ruby
-# Locally enable
-MyEntity.represent(users, grape_entity_preloader: :enabled)
-
-# Locally disable
-MyEntity.represent(users, grape_entity_preloader: :disabled)
-```
-
-##### 2. Using a block
-
 For a specific block of code, you can use `with_enable` or `with_disable`. This is useful in contexts like API endpoints or middlewares.
 
 ```ruby

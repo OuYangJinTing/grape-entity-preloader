@@ -10,11 +10,8 @@ module Grape
           def represent(objects, options = {})
             options = Grape::Entity::Options.new(options) unless options.is_a?(Grape::Entity::Options)
 
-            options[:grape_entity_preloader] ||= Preloader.enabled? ? :enabled : :disabled
-            Preloader.new(root_exposures, objects, options).call if options[:grape_entity_preloader] == :enabled
-            options[:grape_entity_preloader] = :finished
-
-            super(objects, options)
+            Preloader.new(root_exposures, objects, options).call if Preloader.enabled?
+            Preloader.with_disable { super(objects, options) }
           end
         end
       end

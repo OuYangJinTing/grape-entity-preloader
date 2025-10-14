@@ -121,7 +121,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
         }
 
         expect do
-          User::Entity.represent(users, options.dup)
+          User::Entity.represent(users, options)
         end.to make_database_queries(count: 1)
           .and make_database_queries(count: 1, matching: /user_books_by_association/)
 
@@ -129,7 +129,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
 
         options[:only] << { books_by_association: [:tags_by_association] }
         expect do
-          User::Entity.represent(users, options.dup)
+          User::Entity.represent(users, options)
         end.to make_database_queries(count: 2)
           .and make_database_queries(count: 1, matching: /user_books_by_association/)
           .and make_database_queries(count: 1, matching: /book_tags_by_association/)
