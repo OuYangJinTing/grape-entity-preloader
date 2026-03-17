@@ -26,18 +26,20 @@ module Grape
         end
       end
 
-      def self.with_enable
+      def self.with_enable # rubocop:disable Metrics/MethodLength
         return yield if enabled?
 
-        old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
-        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = true
+        begin
+          old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = true
 
-        yield
-
-        if old_value.nil?
-          ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
-        else
-          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+          yield
+        ensure
+          if old_value.nil?
+            ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
+          else
+            ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+          end
         end
       end
 
@@ -49,18 +51,20 @@ module Grape
         !enabled?
       end
 
-      def self.with_disable
+      def self.with_disable # rubocop:disable Metrics/MethodLength
         return yield if disabled?
 
-        old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
-        ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = false
+        begin
+          old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = false
 
-        yield
-
-        if old_value.nil?
-          ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
-        else
-          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+          yield
+        ensure
+          if old_value.nil?
+            ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
+          else
+            ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
+          end
         end
       end
 

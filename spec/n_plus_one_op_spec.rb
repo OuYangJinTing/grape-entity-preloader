@@ -105,7 +105,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
           User::Entity.represent(
             users,
             serializable: true,
-            only: [books_by_association: %i[tags_by_association tags_by_callback]]
+            only: [{ books_by_association: %i[tags_by_association tags_by_callback] }]
           )
         end.to make_database_queries(count: 3)
           .and make_database_queries(count: 1, matching: /user_books_by_association/)
@@ -149,7 +149,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
           User::Entity.represent(
             users,
             serializable: true,
-            only: [books_by_callback: %i[tags_by_association tags_by_callback]]
+            only: [{ books_by_callback: %i[tags_by_association tags_by_callback] }]
           )
         end.to make_database_queries(count: 3)
           .and make_database_queries(count: 1, matching: /books_by_callback/)
