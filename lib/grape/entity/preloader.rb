@@ -68,15 +68,6 @@ module Grape
         end
       end
 
-      def self.activerecord_gte_7_0?
-        unless defined?(ActiveRecord) && ActiveRecord.respond_to?(:version) && ActiveRecord.version >= Gem::Version.new('7.0')
-          warn 'ActiveRecord 7.0 or later is required for preload association'
-          return false
-        end
-
-        true
-      end
-
       def initialize(exposures, objects, options)
         @exposures = exposures
         @objects = Array.wrap(objects)
@@ -98,11 +89,16 @@ module Grape
       private
 
       def execute_preload_associations
-        return unless Preloader.activerecord_gte_7_0?
         return if associations.empty?
 
         # TODO: Change ActiveRecord async query
         ActiveRecord::Associations::Preloader.new(records: objects, associations: associations).call
+      rescue => e # rubocop:disable Style/RescueStandardError
+        if defined?(ActiveRecord) && ActiveRecord.respond_to?(:version) && ActiveRecord.version >= Gem::Version.new('7.0')
+          raise e
+        end
+
+        raise 'Preloading associations requires ActiveRecord >= 7.0'
       end
 
       def execute_preload_callbacks # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
@@ -133,7 +129,7 @@ module Grape
 
           if exposure.preload_callback
             callbacks[nested_association_chain.dup] << [exposure, options]
-          elsif exposure.preload_association && Preloader.activerecord_gte_7_0?
+          elsif exposure.preload_association
             associations[exposure.preload_association] ||= {}
           end
 
