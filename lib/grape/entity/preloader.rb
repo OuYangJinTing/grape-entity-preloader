@@ -9,6 +9,8 @@ require_relative 'preloader/exposure/base'
 module Grape
   class Entity
     class Preloader # rubocop:disable Style/Documentation,Metrics/ClassLength
+      STATE_KEY = :grape_entity_preloader
+
       attr_reader :entity_class, :objects, :options, :associations, :callbacks, :nested_association_chain
 
       singleton_class.attr_accessor :enabled
@@ -18,53 +20,40 @@ module Grape
         self.enabled = true
       end
 
+      def self.disabled!
+        self.enabled = false
+      end
+
       def self.enabled?
-        if ActiveSupport::IsolatedExecutionState.key?(:grape_entity_preloader)
-          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
+        if ActiveSupport::IsolatedExecutionState.key?(STATE_KEY)
+          ActiveSupport::IsolatedExecutionState[STATE_KEY]
         else
           enabled
         end
-      end
-
-      def self.with_enable # rubocop:disable Metrics/MethodLength
-        return yield if enabled?
-
-        begin
-          old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
-          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = true
-
-          yield
-        ensure
-          if old_value.nil?
-            ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
-          else
-            ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
-          end
-        end
-      end
-
-      def self.disabled!
-        self.enabled = false
       end
 
       def self.disabled?
         !enabled?
       end
 
-      def self.with_disable # rubocop:disable Metrics/MethodLength
-        return yield if disabled?
+      def self.with_enable(&block)
+        enabled? ? yield : with_state(true, &block)
+      end
 
-        begin
-          old_value = ActiveSupport::IsolatedExecutionState[:grape_entity_preloader]
-          ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = false
+      def self.with_disable(&block)
+        disabled? ? yield : with_state(false, &block)
+      end
 
-          yield
-        ensure
-          if old_value.nil?
-            ActiveSupport::IsolatedExecutionState.delete(:grape_entity_preloader)
-          else
-            ActiveSupport::IsolatedExecutionState[:grape_entity_preloader] = old_value
-          end
+      def self.with_state(value)
+        old_value = ActiveSupport::IsolatedExecutionState[STATE_KEY]
+        ActiveSupport::IsolatedExecutionState[STATE_KEY] = value
+
+        yield
+      ensure
+        if old_value.nil?
+          ActiveSupport::IsolatedExecutionState.delete(STATE_KEY)
+        else
+          ActiveSupport::IsolatedExecutionState[STATE_KEY] = old_value
         end
       end
 
@@ -81,7 +70,7 @@ module Grape
       def call
         return if objects.empty?
 
-        extract_preload_options(entity_class.root_exposures, options, associations)
+        extract_preload_option(entity_class.root_exposures, options, associations)
         execute_preload_associations
         execute_preload_callbacks
       end
@@ -125,7 +114,7 @@ module Grape
         end
       end
 
-      def extract_preload_options(exposures, options, associations) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
+      def extract_preload_option(exposures, options, associations) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
         exposures.each do |exposure| # rubocop:disable Metrics/BlockLength
           key = exposure.instance_variable_get(:@key)
           # Dynamic key or attr_path are difficult to handle and little used, so skip preloading directly.
@@ -143,7 +132,7 @@ module Grape
 
           if exposure.is_a?(Grape::Entity::Exposure::NestingExposure)
             options.with_attr_path(key) do
-              extract_preload_options(
+              extract_preload_option(
                 exposure.nested_exposures,
                 nesting_options_for(options, key),
                 associations
@@ -152,7 +141,7 @@ module Grape
           elsif exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) && associations[exposure.preload_association]
             options.with_attr_path(key) do
               nested_association_chain.push(exposure.preload_association)
-              extract_preload_options(
+              extract_preload_option(
                 exposure.using_class.root_exposures,
                 nesting_options_for(options, key),
                 associations[exposure.preload_association]
