@@ -9,7 +9,7 @@ require_relative 'preloader/exposure/base'
 module Grape
   class Entity
     class Preloader # rubocop:disable Style/Documentation,Metrics/ClassLength
-      attr_reader :exposures, :objects, :options, :associations, :callbacks, :nested_association_chain
+      attr_reader :entity_class, :objects, :options, :associations, :callbacks, :nested_association_chain
 
       singleton_class.attr_accessor :enabled
       self.enabled = false
@@ -68,8 +68,8 @@ module Grape
         end
       end
 
-      def initialize(exposures, objects, options)
-        @exposures = exposures
+      def initialize(entity_class, objects, options)
+        @entity_class = entity_class
         @objects = Array.wrap(objects)
         @options = options
 
@@ -81,7 +81,7 @@ module Grape
       def call
         return if objects.empty?
 
-        extract_preload_options(exposures, options, associations)
+        extract_preload_options(entity_class.root_exposures, options, associations)
         execute_preload_associations
         execute_preload_callbacks
       end
@@ -110,20 +110,28 @@ module Grape
 
           exposures_with_options.each do |exposure, options|
             callback_objects = exposure.preload_callback.call(association_objects, options)
-            # Dynamic keys are difficult to handle and less used, skipped directly
-            next if !exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) || exposure_with_dynamic_key?(exposure)
+            next unless exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
+
+            # Dynamic key are difficult to handle and little used, so skip preloading directly.
+            key = exposure.instance_variable_get(:@key)
+            next if key.respond_to?(:call)
 
             Preloader.new(
-              exposure.using_class.root_exposures,
+              exposure.using_class,
               callback_objects,
-              nesting_options(exposure, options)
+              nesting_options_for(options, key)
             ).call
           end
         end
       end
 
       def extract_preload_options(exposures, options, associations) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
-        exposures.each do |exposure|
+        exposures.each do |exposure| # rubocop:disable Metrics/BlockLength
+          key = exposure.instance_variable_get(:@key)
+          # Dynamic key or attr_path are difficult to handle and little used, so skip preloading directly.
+          next if key.respond_to?(:call)
+          next if exposure.instance_variable_get(:@attr_path_proc).respond_to?(:call)
+
           next unless exposure.should_return_key?(options)
           next if exposure.preload_condition && !exposure.preload_condition.call(options)
 
@@ -133,33 +141,30 @@ module Grape
             associations[exposure.preload_association] ||= {}
           end
 
-          # Dynamic keys are difficult to handle and less used, skipped directly
-          next if exposure_with_dynamic_key?(exposure)
-
           if exposure.is_a?(Grape::Entity::Exposure::NestingExposure)
-            extract_preload_options(
-              exposure.nested_exposures,
-              nesting_options(exposure, options),
-              associations
-            )
+            options.with_attr_path(key) do
+              extract_preload_options(
+                exposure.nested_exposures,
+                nesting_options_for(options, key),
+                associations
+              )
+            end
           elsif exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) && associations[exposure.preload_association]
-            nested_association_chain.push(exposure.preload_association)
-            extract_preload_options(
-              exposure.using_class.root_exposures,
-              nesting_options(exposure, options),
-              associations[exposure.preload_association]
-            )
-            nested_association_chain.pop
+            options.with_attr_path(key) do
+              nested_association_chain.push(exposure.preload_association)
+              extract_preload_options(
+                exposure.using_class.root_exposures,
+                nesting_options_for(options, key),
+                associations[exposure.preload_association]
+              )
+              nested_association_chain.pop
+            end
           end
         end
       end
 
-      def nesting_options(exposure, options)
-        options.for_nesting(exposure.instance_variable_get(:@key))
-      end
-
-      def exposure_with_dynamic_key?(exposure)
-        exposure.instance_variable_get(:@key).respond_to?(:call)
+      def nesting_options_for(options, key)
+        key ? options.for_nesting(key) : options
       end
     end
   end
