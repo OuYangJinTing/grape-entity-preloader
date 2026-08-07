@@ -103,7 +103,10 @@ module Grape
 
             # Dynamic key are difficult to handle and little used, so skip preloading directly.
             key = exposure.instance_variable_get(:@key)
-            next if key.respond_to?(:call)
+            if key.respond_to?(:call)
+              warn "#{entity_class}.#{exposure.attribute} has dynamic key, preloading is not supported"
+              next
+            end
 
             Preloader.new(
               exposure.using_class,
@@ -118,8 +121,14 @@ module Grape
         exposures.each do |exposure| # rubocop:disable Metrics/BlockLength
           key = exposure.instance_variable_get(:@key)
           # Dynamic key or attr_path are difficult to handle and little used, so skip preloading directly.
-          next if key.respond_to?(:call)
-          next if exposure.instance_variable_get(:@attr_path_proc).respond_to?(:call)
+          if key.respond_to?(:call)
+            warn "#{entity_class}.#{exposure.attribute} has dynamic key, preloading is not supported"
+            next
+          end
+          if exposure.instance_variable_get(:@attr_path_proc).respond_to?(:call)
+            warn "#{entity_class}.#{exposure.attribute} has dynamic attr_path, preloading is not supported"
+            next
+          end
 
           next unless exposure.should_return_key?(options)
           next if exposure.preload_condition && !exposure.preload_condition.call(options)
