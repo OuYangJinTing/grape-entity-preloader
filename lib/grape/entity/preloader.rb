@@ -131,7 +131,7 @@ module Grape
           end
 
           next unless exposure.should_return_key?(options)
-          next if exposure.preload_condition && !exposure.preload_condition.call(options)
+          next if exposure.preload_condition && !exposure.preload_condition.call(objects, options)
 
           if exposure.preload_callback
             callbacks[nested_association_chain.dup] << [exposure, options]

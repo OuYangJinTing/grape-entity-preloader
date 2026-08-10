@@ -21,5 +21,5 @@ end
 
 Grape::Entity.prepend(Grape::Entity::Preloader::Entity)
 silence_warnings do
-  Grape::Entity::OPTIONS = (Grape::Entity::OPTIONS + %i[preload_association preload_callback preload_condition]).freeze
+  Grape::Entity::OPTIONS = (Grape::Entity::OPTIONS + %i[preload]).freeze
 end

@@ -113,7 +113,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
           .and make_database_queries(count: 1, matching: /book_tags_by_callback/)
       end
 
-      it 'same preload_association(single preload_association after nested preload_association)' do
+      it 'same preload (single association after nested association)' do
         options = {
           serializable: true,
           expose_books_count_by_association: true,

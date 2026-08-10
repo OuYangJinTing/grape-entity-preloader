@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+- ⚠️ [Broken] Merge `:preload_association`, `:preload_callback`, and `:preload_condition` into a single `:preload` option.
+- ⚠️ [Broken] The `preload_condition` Proc signature has changed from `->(options) { ... }` to `->(objects, options) { ... }` (same as `preload_callback`).
+
 ## [0.3.0] - 2026-03-17 UTC
 
 - Ensure `with_enable` and `with_disable` methods return block result

@@ -20,39 +20,47 @@ class User < ApplicationRecord
   entity do
     expose :name
 
-    expose :books_by_association, using: 'Book::Entity', preload_association: :books_by_association
-    expose :books_by_callback, using: 'Book::Entity', preload_callback: lambda { |objects, _options|
+    expose :books_by_association, using: 'Book::Entity', preload: :books_by_association
+    expose :books_by_callback, using: 'Book::Entity', preload: lambda { |objects, _options|
       ActiveRecord::Associations::Preloader.new(
         records: objects,
         associations: :books_by_callback
       ).call.first.preloaded_records
     }
-    expose :books_count_by_association, preload_association: :books_by_association,
-                                        preload_condition: ->(options) { options[:expose_books_count_by_association] }
-    expose :books_count_by_callback, preload_condition: ->(options) { options[:expose_books_count_by_callback] },
-                                     preload_callback: lambda { |objects, _options|
-                                       ActiveRecord::Associations::Preloader.new(
-                                         records: objects,
-                                         associations: :books_by_callback
-                                       ).call.first.preloaded_records
-                                     }
+    expose :books_count_by_association, preload: [
+      :books_by_association,
+      ->(_objects, options) { options[:expose_books_count_by_association] }
+    ]
+    expose :books_count_by_callback, preload: [
+      lambda { |objects, _options|
+        ActiveRecord::Associations::Preloader.new(
+          records: objects,
+          associations: :books_by_callback
+        ).call.first.preloaded_records
+      },
+      ->(_objects, options) { options[:expose_books_count_by_callback] }
+    ]
 
-    expose :tags_by_association, using: 'Tag::Entity', preload_association: :tags_by_association
-    expose :tags_by_callback, using: 'Tag::Entity', preload_callback: lambda { |objects, _options|
+    expose :tags_by_association, using: 'Tag::Entity', preload: :tags_by_association
+    expose :tags_by_callback, using: 'Tag::Entity', preload: lambda { |objects, _options|
       ActiveRecord::Associations::Preloader.new(
         records: objects,
         associations: :tags_by_callback
       ).call.first.preloaded_records
     }
-    expose :tags_count_by_association, preload_association: :tags_by_association,
-                                       preload_condition: ->(options) { options[:expose_user_tags_count_by_association] } # rubocop:disable Layout/LineLength
-    expose :tags_count_by_callback, preload_condition: ->(options) { options[:expose_user_tags_count_by_callback] },
-                                    preload_callback: lambda { |objects, _options|
-                                      ActiveRecord::Associations::Preloader.new(
-                                        records: objects,
-                                        associations: :tags_by_callback
-                                      ).call.first.preloaded_records
-                                    }
+    expose :tags_count_by_association, preload: [
+      :tags_by_association,
+      ->(_objects, options) { options[:expose_user_tags_count_by_association] }
+    ]
+    expose :tags_count_by_callback, preload: [
+      lambda { |objects, _options|
+        ActiveRecord::Associations::Preloader.new(
+          records: objects,
+          associations: :tags_by_callback
+        ).call.first.preloaded_records
+      },
+      ->(_objects, options) { options[:expose_user_tags_count_by_callback] }
+    ]
 
     def books_count_by_association
       object.books_by_association.size

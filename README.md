@@ -47,16 +47,20 @@ Grape::Entity::Preloader.with_disable do
 end
 ```
 
-### `preload_association`
+### `preload`
 
-Use `preload_association` to preload ActiveRecord associations. This helps to avoid N+1 queries when an exposure represents an association.
+Use `preload` to configure preloading for an exposure. It can be a `Symbol` to preload an ActiveRecord association, a `Proc` to run a custom preload callback, or an `Array` with an optional condition.
+
+#### Association preloading
+
+A `Symbol` value preloads the named association:
 
 ```ruby
 class UserEntity < Grape::Entity
   expose :id
   expose :name
   # This will preload the `books` association for all users being represented.
-  expose :books, using: BookEntity, preload_association: :books
+  expose :books, using: BookEntity, preload: :books
 end
 
 # In your API
@@ -74,26 +78,27 @@ class BookEntity < Grape::Entity
   expose :id
   expose :title
   # This will preload tags for each book
-  expose :tags, using: TagEntity, preload_association: :tags
+  expose :tags, using: TagEntity, preload: :tags
 end
 
 class UserEntity < Grape::Entity
   expose :id
   expose :name
-  expose :books, using: BookEntity, preload_association: :books
+  expose :books, using: BookEntity, preload: :books
 end
 
 # It will generate 3 queries instead of 1 + 10 (for books) + N (for tags)
 UserEntity.represent(User.limit(10))
 ```
 
-### `preload_callback`
+#### Custom preloading callback
 
-For more complex scenarios that `preload_association` doesn't cover (e.g., loading data from other services, custom caching logic), you can use `preload_callback`.
+For more complex scenarios that association preloading doesn't cover (e.g., loading data from other services, custom caching logic), you can use a `Proc` that accepts two arguments:
 
-It must be a `Proc` that accepts two arguments:
 1. `objects`: An array of the parent objects being represented.
 2. `options`: The `Grape::Entity::Options` object for the current representation context.
+
+This is the same `objects` / `options` signature used by conditional preloading (see below).
 
 **The `Proc` should return an array of objects that will be used for the nested entity representation. These returned objects will then be passed to the preloader for that nested entity, allowing for further nested preloading.**
 
@@ -107,7 +112,7 @@ class UserEntity < Grape::Entity
   expose :id
   expose :name
 
-  expose :stats, using: UserStatsEntity, preload_callback: ->(users, _options) do
+  expose :stats, using: UserStatsEntity, preload: ->(users, _options) do
     # `users` is an array of User objects.
     # Here you can fetch stats for all users in one batch.
     user_ids = users.map(&:id)
@@ -120,23 +125,17 @@ class UserEntity < Grape::Entity
     # The block must return the objects that will be presented by the nested entity.
     # In this case, it's the stats objects we just loaded.
     users.map { |user| user.instance_variable_get(:@stats) }
-  end
-end
-
-# In the entity, you need to define how to access the preloaded data.
-class UserEntity < Grape::Entity
-  # ...
-  expose :stats, using: UserStatsEntity, preload_callback: ... do |user, _options|
+  end do |user, _options|
     user.instance_variable_get(:@stats)
   end
 end
 ```
 
-### `preload_condition`
+#### Conditional preloading
 
-Use `preload_condition` to conditionally enable or disable preloading for an exposure. It must be a `Proc` that accepts one argument: `options`, which is the `Grape::Entity::Options` object.
+When you need a condition, pass an `Array` where the first element is the preload value and the second element is a `Proc` that accepts two arguments: `objects` and `options`. The condition `Proc` receives the same arguments as a custom preload callback `Proc`.
 
-If the `Proc` returns a falsy value, preloading for that exposure will be skipped.
+If the condition `Proc` returns a falsy value, preloading for that exposure will be skipped.
 
 ```ruby
 class UserEntity < Grape::Entity
@@ -146,8 +145,7 @@ class UserEntity < Grape::Entity
   # The :audit_log association will only be preloaded if `include_audit_log` is true in the options.
   expose :audit_log,
          using: AuditLogEntity,
-         preload_association: :audit_log,
-         preload_condition: ->(options) { options[:include_audit_log] }
+         preload: [:audit_log, ->(_objects, options) { options[:include_audit_log] }]
 end
 
 # Preloading for :audit_log is skipped
@@ -155,6 +153,19 @@ UserEntity.represent(user)
 
 # Preloading for :audit_log is executed
 UserEntity.represent(user, include_audit_log: true)
+```
+
+For a callback with a condition:
+
+```ruby
+class UserEntity < Grape::Entity
+  expose :stats,
+         using: UserStatsEntity,
+         preload: [
+           ->(users, _options) { StatsService.batch_get(users) },
+           ->(_objects, options) { options[:include_stats] }
+         ]
+end
 ```
 
 ## Development
