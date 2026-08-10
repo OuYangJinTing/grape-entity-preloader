@@ -131,6 +131,28 @@ class UserEntity < Grape::Entity
 end
 ```
 
+#### Callback deduplication
+
+When several `expose` declarations need the same preloaded data, reference the same `preload` callback `Proc` for each of them. The preloader will run that callback once and reuse its result for all of the associated exposures, avoiding duplicate work.
+
+```ruby
+class UserEntity < Grape::Entity
+  stats_callback = ->(users, _options) do
+    stats_by_user = StatsService.batch_get(users)
+    users.each { |user| user.instance_variable_set(:@stats, stats_by_user[user.id]) }
+    users.map { |user| user.instance_variable_get(:@stats) }
+  end
+
+  expose :public_stats, using: StatsEntity, preload: stats_callback do |user, _options|
+    user.instance_variable_get(:@stats)
+  end
+
+  expose :private_stats, using: StatsEntity, preload: stats_callback do |user, _options|
+    user.instance_variable_get(:@stats)
+  end
+end
+```
+
 #### Conditional preloading
 
 When you need a condition, pass an `Array` where the first element is the preload value and the second element is a `Proc` that accepts two arguments: `objects` and `options`. The condition `Proc` receives the same arguments as a custom preload callback `Proc`.

@@ -90,29 +90,32 @@ module Grape
         raise 'Preloading associations requires ActiveRecord >= 7.0'
       end
 
-      def execute_preload_callbacks # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity
+      def execute_preload_callbacks # rubocop:disable Metrics/AbcSize,Metrics/MethodLength,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
         callbacks.each do |association_chain, exposures_with_options|
           association_objects = association_chain.inject(objects) do |items, association|
             items.filter_map(&association).flatten(1)
           end
           next if association_objects.empty?
 
-          exposures_with_options.each do |exposure, options|
-            callback_objects = exposure.preload_callback.call(association_objects, options)
-            next unless exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
+          exposures_with_options.group_by { |exposure, _options| exposure.preload_callback }.each do |callback, group|
+            callback_objects = callback.call(association_objects, group.first[1])
 
-            # Dynamic key are difficult to handle and little used, so skip preloading directly.
-            key = exposure.instance_variable_get(:@key)
-            if key.respond_to?(:call)
-              warn "#{entity_class}.#{exposure.attribute} has dynamic key, preloading is not supported"
-              next
+            group.each do |exposure, options|
+              next unless exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
+
+              # Dynamic key are difficult to handle and little used, so skip preloading directly.
+              key = exposure.instance_variable_get(:@key)
+              if key.respond_to?(:call)
+                warn "#{entity_class}.#{exposure.attribute} has dynamic key, preloading is not supported"
+                next
+              end
+
+              Preloader.new(
+                exposure.using_class,
+                callback_objects,
+                nesting_options_for(options, key)
+              ).call
             end
-
-            Preloader.new(
-              exposure.using_class,
-              callback_objects,
-              nesting_options_for(options, key)
-            ).call
           end
         end
       end

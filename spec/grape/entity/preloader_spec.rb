@@ -66,4 +66,41 @@ RSpec.describe Grape::Entity::Preloader do
       expect(paths[:enabled]).to eq([%i[embed b]])
     end
   end
+
+  describe 'preload callback deduplication' do
+    it 'only calls the same callback once for multiple exposures' do
+      calls = []
+
+      callback = lambda do |objects, _options|
+        calls << objects
+        objects.each do |obj|
+          obj.instance_variable_set(:@foo, { value: obj.id })
+          obj.instance_variable_set(:@bar, { value: obj.id })
+        end
+        objects.map { |obj| obj.instance_variable_get(:@foo) }
+      end
+
+      item_class = Struct.new(:id)
+
+      child_entity = Class.new(Grape::Entity) do
+        expose :value
+      end
+
+      parent_entity = Class.new(Grape::Entity) do
+        expose :foo, using: child_entity, preload: callback do |obj, _options|
+          obj.instance_variable_get(:@foo)
+        end
+
+        expose :bar, using: child_entity, preload: callback do |obj, _options|
+          obj.instance_variable_get(:@bar)
+        end
+      end
+
+      objects = [item_class.new(1), item_class.new(2)]
+      described_class.with_enable { parent_entity.represent(objects, serializable: true) }
+
+      expect(calls.size).to eq(1)
+      expect(calls.first).to eq(objects)
+    end
+  end
 end
