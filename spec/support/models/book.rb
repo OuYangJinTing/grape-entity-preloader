@@ -26,7 +26,7 @@ class Book < ApplicationRecord
     }
     expose :tags_count_by_association, preload: [
       :tags_by_association,
-      ->(_objects, options) { options[:expose_book_tags_count_by_association] }
+      ->(options) { options[:expose_book_tags_count_by_association] }
     ] do |object, _options|
       object.tags_by_association.size
     end
@@ -38,7 +38,7 @@ class Book < ApplicationRecord
         ).call
         objects.to_h { |object| [object, object.tags_by_callback.size] }
       },
-      ->(_objects, options) { options[:expose_book_tags_count_by_callback] }
+      ->(options) { options[:expose_book_tags_count_by_callback] }
     ]
   end
 end

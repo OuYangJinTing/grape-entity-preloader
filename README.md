@@ -149,7 +149,7 @@ end
 
 #### Conditional preloading
 
-When you need a condition, pass an `Array` where the first element is the preload value and the second element is a `Proc` that accepts two arguments: `objects` and `options`. The condition `Proc` receives the same arguments as a custom preload callback `Proc`.
+When you need a condition, pass an `Array` where the first element is the preload value and the second element is a `Proc` that accepts one argument: `options`.
 
 If the condition `Proc` returns a falsy value, preloading for that exposure will be skipped.
 
@@ -161,7 +161,7 @@ class UserEntity < Grape::Entity
   # The :audit_log association will only be preloaded if `include_audit_log` is true in the options.
   expose :audit_log,
          using: AuditLogEntity,
-         preload: [:audit_log, ->(_objects, options) { options[:include_audit_log] }]
+         preload: [:audit_log, ->(options) { options[:include_audit_log] }]
 end
 
 # Preloading for :audit_log is skipped
@@ -179,7 +179,7 @@ class UserEntity < Grape::Entity
          using: UserStatsEntity,
          preload: [
            ->(users, _options) { StatsService.batch_get(users) },
-           ->(_objects, options) { options[:include_stats] }
+           ->(options) { options[:include_stats] }
          ]
 end
 ```

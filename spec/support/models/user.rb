@@ -30,7 +30,7 @@ class User < ApplicationRecord
     }
     expose :books_count_by_association, preload: [
       :books_by_association,
-      ->(_objects, options) { options[:expose_books_count_by_association] }
+      ->(options) { options[:expose_books_count_by_association] }
     ] do |object, _options|
       object.books_by_association.size
     end
@@ -42,7 +42,7 @@ class User < ApplicationRecord
         ).call
         objects.to_h { |object| [object, object.books_by_callback.size] }
       },
-      ->(_objects, options) { options[:expose_books_count_by_callback] }
+      ->(options) { options[:expose_books_count_by_callback] }
     ]
 
     expose :tags_by_association, using: 'Tag::Entity', preload: :tags_by_association
@@ -55,7 +55,7 @@ class User < ApplicationRecord
     }
     expose :tags_count_by_association, preload: [
       :tags_by_association,
-      ->(_objects, options) { options[:expose_user_tags_count_by_association] }
+      ->(options) { options[:expose_user_tags_count_by_association] }
     ] do |object, _options|
       object.tags_by_association.size
     end
@@ -67,7 +67,7 @@ class User < ApplicationRecord
         ).call
         objects.to_h { |object| [object, object.tags_by_callback.size] }
       },
-      ->(_objects, options) { options[:expose_user_tags_count_by_callback] }
+      ->(options) { options[:expose_user_tags_count_by_callback] }
     ]
   end
 end
