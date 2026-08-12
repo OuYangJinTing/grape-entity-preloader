@@ -2,6 +2,7 @@
 
 - ⚠️ [Broken] Merge `:preload_association`, `:preload_callback`, and `:preload_condition` into a single `:preload` option.
 - ⚠️ [Broken] The `preload_condition` Proc signature has changed from `->(options) { ... }` to `->(objects, options) { ... }` (same as `preload_callback`).
+- ⚠️ [Broken] The `preload_callback` Proc must now return a Hash mapping each object to its preloaded value, instead of an Array of objects. Preloaded values are cached in `options` and reused across exposures.
 
 ## [0.3.0] - 2026-03-17 UTC
 

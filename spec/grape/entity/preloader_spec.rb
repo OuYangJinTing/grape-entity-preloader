@@ -70,17 +70,12 @@ RSpec.describe Grape::Entity::Preloader do
   describe 'preload callback deduplication' do
     it 'only calls the same callback once for multiple exposures' do
       calls = []
+      item_class = Struct.new(:id)
 
       callback = lambda do |objects, _options|
         calls << objects
-        objects.each do |obj|
-          obj.instance_variable_set(:@foo, { value: obj.id })
-          obj.instance_variable_set(:@bar, { value: obj.id })
-        end
-        objects.map { |obj| obj.instance_variable_get(:@foo) }
+        objects.to_h { |obj| [obj, { value: obj.id }] }
       end
-
-      item_class = Struct.new(:id)
 
       child_entity = Class.new(Grape::Entity) do
         expose :value
@@ -88,11 +83,11 @@ RSpec.describe Grape::Entity::Preloader do
 
       parent_entity = Class.new(Grape::Entity) do
         expose :foo, using: child_entity, preload: callback do |obj, _options|
-          obj.instance_variable_get(:@foo)
+          { value: obj.id }
         end
 
         expose :bar, using: child_entity, preload: callback do |obj, _options|
-          obj.instance_variable_get(:@bar)
+          { value: obj.id }
         end
       end
 
@@ -101,6 +96,38 @@ RSpec.describe Grape::Entity::Preloader do
 
       expect(calls.size).to eq(1)
       expect(calls.first).to eq(objects)
+    end
+  end
+
+  describe 'preload cache isolation across nesting levels' do
+    it 'does not share parent cache with nested cache for the same object and callback' do
+      item_class = Struct.new(:id, :child)
+      calls = []
+      callback = lambda do |objects, _options|
+        call_index = calls.size
+        calls.concat(objects)
+        objects.to_h { |obj| [obj, { call_index: call_index }] }
+      end
+
+      child_entity = Class.new(Grape::Entity) do
+        expose :id
+        expose :meta, preload: callback
+      end
+
+      parent_entity = Class.new(Grape::Entity) do
+        expose :id
+        expose :meta, preload: callback
+        expose :child, using: child_entity, preload: ->(objects, _options) { objects.to_h { |obj| [obj, obj.child] } }
+      end
+
+      parent = item_class.new(1, nil)
+      parent.child = parent
+
+      result = described_class.with_enable { parent_entity.represent(parent, serializable: true) }
+
+      expect(calls.size).to eq(2)
+      expect(result[:meta]).to eq({ call_index: 0 })
+      expect(result[:child][:meta]).to eq({ call_index: 1 })
     end
   end
 end

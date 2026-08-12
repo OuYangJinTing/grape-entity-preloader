@@ -5,11 +5,13 @@ require_relative 'preloader/version'
 require_relative 'preloader/entity'
 require_relative 'preloader/options'
 require_relative 'preloader/exposure/base'
+require_relative 'preloader/exposure/value'
 
 module Grape
   class Entity
     class Preloader # rubocop:disable Style/Documentation,Metrics/ClassLength
       STATE_KEY = :grape_entity_preloader
+      PRELOAD_CACHE_KEY = :grape_entity_preload_cache
 
       attr_reader :entity_class, :objects, :options, :associations, :callbacks, :nested_association_chain
 
@@ -98,9 +100,14 @@ module Grape
           next if association_objects.empty?
 
           exposures_with_options.group_by { |exposure, _options| exposure.preload_callback }.each do |callback, group|
-            callback_objects = callback.call(association_objects, group.first[1])
+            callback_result = callback.call(association_objects, group.first[1])
+            unless callback_result.is_a?(Hash)
+              raise ArgumentError, 'The :preload callback must return a Hash mapping objects to their preloaded values.'
+            end
 
-            group.each do |exposure, options|
+            (options[PRELOAD_CACHE_KEY] ||= {})[callback] = callback_result
+
+            group.each do |exposure, nested_options|
               next unless exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)
 
               # Dynamic key are difficult to handle and little used, so skip preloading directly.
@@ -112,8 +119,8 @@ module Grape
 
               Preloader.new(
                 exposure.using_class,
-                callback_objects,
-                nesting_options_for(options, key)
+                callback_result.values.flatten(1),
+                nesting_options_for(nested_options, key)
               ).call
             end
           end

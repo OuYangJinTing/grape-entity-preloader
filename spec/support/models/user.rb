@@ -25,18 +25,22 @@ class User < ApplicationRecord
       ActiveRecord::Associations::Preloader.new(
         records: objects,
         associations: :books_by_callback
-      ).call.first.preloaded_records
+      ).call
+      objects.to_h { |object| [object, object.books_by_callback] }
     }
     expose :books_count_by_association, preload: [
       :books_by_association,
       ->(_objects, options) { options[:expose_books_count_by_association] }
-    ]
+    ] do |object, _options|
+      object.books_by_association.size
+    end
     expose :books_count_by_callback, preload: [
       lambda { |objects, _options|
         ActiveRecord::Associations::Preloader.new(
           records: objects,
           associations: :books_by_callback
-        ).call.first.preloaded_records
+        ).call
+        objects.to_h { |object| [object, object.books_by_callback.size] }
       },
       ->(_objects, options) { options[:expose_books_count_by_callback] }
     ]
@@ -46,36 +50,24 @@ class User < ApplicationRecord
       ActiveRecord::Associations::Preloader.new(
         records: objects,
         associations: :tags_by_callback
-      ).call.first.preloaded_records
+      ).call
+      objects.to_h { |object| [object, object.tags_by_callback] }
     }
     expose :tags_count_by_association, preload: [
       :tags_by_association,
       ->(_objects, options) { options[:expose_user_tags_count_by_association] }
-    ]
+    ] do |object, _options|
+      object.tags_by_association.size
+    end
     expose :tags_count_by_callback, preload: [
       lambda { |objects, _options|
         ActiveRecord::Associations::Preloader.new(
           records: objects,
           associations: :tags_by_callback
-        ).call.first.preloaded_records
+        ).call
+        objects.to_h { |object| [object, object.tags_by_callback.size] }
       },
       ->(_objects, options) { options[:expose_user_tags_count_by_callback] }
     ]
-
-    def books_count_by_association
-      object.books_by_association.size
-    end
-
-    def books_count_by_callback
-      object.books_by_callback.size
-    end
-
-    def tags_count_by_association
-      object.tags_by_association.size
-    end
-
-    def tags_count_by_callback
-      object.tags_by_callback.size
-    end
   end
 end

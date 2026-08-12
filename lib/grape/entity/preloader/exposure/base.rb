@@ -53,9 +53,10 @@ module Grape
             raise ArgumentError, <<~MSG.strip_heredoc
               The :preload option must be a Symbol, Proc, or Array.
               - Symbol: :activerecord_association_name
-              - Proc: ->(objects, options) { ... }
+              - Proc: ->(objects, options) { { object1 => value1, object2 => value2 } }
                 objects: An array of the parent objects being represented.
                 options: The Grape::Entity::Options object for the current representation context.
+                return: A Hash mapping each object to its preloaded value.
               - Array: [activerecord_association_name, condition_proc] | [callback_proc, condition_proc]
 
               eg:

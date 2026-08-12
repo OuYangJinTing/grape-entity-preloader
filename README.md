@@ -100,7 +100,7 @@ For more complex scenarios that association preloading doesn't cover (e.g., load
 
 This is the same `objects` / `options` signature used by conditional preloading (see below).
 
-**The `Proc` should return an array of objects that will be used for the nested entity representation. These returned objects will then be passed to the preloader for that nested entity, allowing for further nested preloading.**
+**The `Proc` must return a `Hash` mapping each parent object to its preloaded value.** The preloader stores this Hash in `options` and reads from it when rendering the exposure. If the cache is not available, the exposure fallback to its normal value method (delegation or block).
 
 ```ruby
 class UserStatsEntity < Grape::Entity
@@ -115,40 +115,34 @@ class UserEntity < Grape::Entity
   expose :stats, using: UserStatsEntity, preload: ->(users, _options) do
     # `users` is an array of User objects.
     # Here you can fetch stats for all users in one batch.
-    user_ids = users.map(&:id)
-    stats_data = StatsService.batch_get_by_user_ids(user_ids) # returns a hash { user_id => stats_object }
+    stats_by_user_id = StatsService.batch_get_by_user_ids(users.map(&:id))
 
-    # The preloader needs to associate the loaded data back to the original objects.
-    # A common pattern is to attach the data to a new attribute on the object.
-    users.each { |user| user.instance_variable_set(:@stats, stats_data[user.id]) }
-
-    # The block must return the objects that will be presented by the nested entity.
-    # In this case, it's the stats objects we just loaded.
-    users.map { |user| user.instance_variable_get(:@stats) }
+    # Return a Hash mapping each user to its stats object.
+    users.to_h { |user| [user, stats_by_user_id[user.id]] }
   end do |user, _options|
-    user.instance_variable_get(:@stats)
+    # Fallback when the preloader is disabled.
+    StatsService.get(user.id)
   end
 end
 ```
 
-#### Callback deduplication
+**Callback deduplication**
 
-When several `expose` declarations need the same preloaded data, reference the same `preload` callback `Proc` for each of them. The preloader will run that callback once and reuse its result for all of the associated exposures, avoiding duplicate work.
+When several `expose` declarations need the same preloaded data, reference the same `preload` callback `Proc` for each of them. The preloader will run that callback once, store the resulting Hash in `options`, and reuse it for all of the associated exposures, avoiding duplicate work.
 
 ```ruby
 class UserEntity < Grape::Entity
   stats_callback = ->(users, _options) do
-    stats_by_user = StatsService.batch_get(users)
-    users.each { |user| user.instance_variable_set(:@stats, stats_by_user[user.id]) }
-    users.map { |user| user.instance_variable_get(:@stats) }
+    stats_by_user_id = StatsService.batch_get(users.map(&:id))
+    users.to_h { |user| [user, stats_by_user_id[user.id]] }
   end
 
   expose :public_stats, using: StatsEntity, preload: stats_callback do |user, _options|
-    user.instance_variable_get(:@stats)
+    StatsService.get(user.id)
   end
 
   expose :private_stats, using: StatsEntity, preload: stats_callback do |user, _options|
-    user.instance_variable_get(:@stats)
+    StatsService.get(user.id)
   end
 end
 ```
