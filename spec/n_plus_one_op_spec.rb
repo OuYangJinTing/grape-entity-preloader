@@ -30,7 +30,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
         expect(Grape::Entity::Preloader.enabled?).to be(true)
 
         expect do
-          Book::Entity.represent(books, serializable: true, only: [:tags_by_association])
+          Book::Entity.represent(books, only: [:tags_by_association])
         end.to make_database_queries(count: 1)
            .and make_database_queries(
              count: 1,
@@ -43,7 +43,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
           expect(Grape::Entity::Preloader.enabled?).to be(true)
 
           expect do
-            Book::Entity.represent(books, serializable: true, only: [:tags_by_association])
+            Book::Entity.represent(books, only: [:tags_by_association])
           end.to make_database_queries(count: 1)
              .and make_database_queries(
                count: 1,
@@ -95,7 +95,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
       it 'single' do
         books = Book.all.load
         expect do
-          Book::Entity.represent(books, serializable: true, only: %i[tags_by_association])
+          Book::Entity.represent(books, only: %i[tags_by_association])
         end.to make_database_queries(count: 1)
           .and make_database_queries(count: 1, matching: /book_tags_by_association/)
       end
@@ -104,7 +104,6 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
         expect do
           User::Entity.represent(
             users,
-            serializable: true,
             only: [{ books_by_association: %i[tags_by_association tags_by_callback] }]
           )
         end.to make_database_queries(count: 3)
@@ -115,7 +114,6 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
 
       it 'same preload (single association after nested association)' do
         options = {
-          serializable: true,
           expose_books_count_by_association: true,
           only: %i[books_count_by_association]
         }
@@ -139,7 +137,7 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
     describe 'callback' do
       it 'single' do
         expect do
-          Book::Entity.represent(books, serializable: true, only: %i[tags_by_callback])
+          Book::Entity.represent(books, only: %i[tags_by_callback])
         end.to make_database_queries(count: 1)
           .and make_database_queries(count: 1, matching: /book_tags_by_callback/)
       end
@@ -148,7 +146,6 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
         expect do
           User::Entity.represent(
             users,
-            serializable: true,
             only: [{ books_by_callback: %i[tags_by_association tags_by_callback] }]
           )
         end.to make_database_queries(count: 3)
@@ -163,7 +160,6 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
         expect do
           Book::Entity.represent(
             books,
-            serializable: true,
             expose_book_tags_count_by_association: true,
             only: %i[tags_count_by_association]
           )

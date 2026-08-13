@@ -3,7 +3,7 @@
 module Grape
   class Entity
     class Preloader
-      module Exposure
+      module Exposure # rubocop:disable Style/Documentation
         module Base # rubocop:disable Style/Documentation
           extend ActiveSupport::Concern
 
@@ -72,9 +72,32 @@ module Grape
             MSG
           end
         end
+        ::Grape::Entity::Exposure::Base.prepend(Base)
+
+        module RepresentExposure # rubocop:disable Style/Documentation
+          def value(...)
+            Preloader.with_disable { super }
+          end
+        end
+        ::Grape::Entity::Exposure::RepresentExposure.prepend(RepresentExposure)
+
+        module Value # rubocop:disable Style/Documentation
+          def value(entity, options)
+            cache = options.dig(PRELOAD_CACHE_KEY, preload_callback)
+            cache.is_a?(Hash) ? cache[entity.object] : super
+          end
+
+          # Always return true for preloaded exposures since they are always valid
+          # The actual validation happens in the #value method
+          def valid?(entity)
+            preload_callback ? true : super
+          end
+        end
+        ::Grape::Entity::Exposure::DelegatorExposure.prepend(Value)
+        ::Grape::Entity::Exposure::BlockExposure.prepend(Value)
+        ::Grape::Entity::Exposure::FormatterExposure.prepend(Value)
+        ::Grape::Entity::Exposure::FormatterBlockExposure.prepend(Value)
       end
     end
   end
 end
-
-Grape::Entity::Exposure::Base.prepend(Grape::Entity::Preloader::Exposure::Base)

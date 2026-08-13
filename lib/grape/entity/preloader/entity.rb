@@ -9,9 +9,8 @@ module Grape
         module ClassMethods # rubocop:disable Style/Documentation
           def represent(objects, options = {})
             options = Grape::Entity::Options.new(options) unless options.is_a?(Grape::Entity::Options)
-
             Preloader.new(self, objects, options).call if Preloader.enabled?
-            Preloader.with_disable { super(objects, options) }
+            super(objects, options)
           end
         end
       end
