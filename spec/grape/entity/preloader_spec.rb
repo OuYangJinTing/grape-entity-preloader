@@ -65,6 +65,12 @@ RSpec.describe Grape::Entity::Preloader do
       expect(paths[:disabled]).to eq(paths[:enabled])
       expect(paths[:enabled]).to eq([%i[embed b]])
     end
+
+    it 'keeps correct attr_path when as_json is called after serializable: false with arrays' do
+      paths = []
+      described_class.with_enable { entity_class(paths).represent([{ a: 1, b: 2 }], serializable: false).as_json }
+      expect(paths).to eq([%i[embed b]])
+    end
   end
 
   describe 'preload callback deduplication' do
@@ -160,6 +166,36 @@ RSpec.describe Grape::Entity::Preloader do
       expect(calls.size).to eq(2)
       expect(result[:meta]).to eq({ call_index: 0 })
       expect(result[:child][:meta]).to eq({ call_index: 1 })
+    end
+
+    it 'keeps nested preload cache when as_json is called after serializable: false with arrays' do
+      item_class = Struct.new(:id, :child)
+      calls = []
+      callback = lambda do |objects, _options|
+        call_index = calls.size
+        calls.concat(objects)
+        objects.to_h { |obj| [obj, { call_index: call_index }] }
+      end
+
+      child_entity = Class.new(Grape::Entity) do
+        expose :id
+        expose :meta, preload: callback
+      end
+
+      parent_entity = Class.new(Grape::Entity) do
+        expose :id
+        expose :meta, preload: callback
+        expose :child, using: child_entity, preload: ->(objects, _options) { objects.to_h { |obj| [obj, obj.child] } }
+      end
+
+      parent = item_class.new(1, nil)
+      parent.child = parent
+
+      result = described_class.with_enable { parent_entity.represent([parent], serializable: false).as_json }
+
+      expect(calls.size).to eq(2)
+      expect(result.first[:meta]).to eq({ call_index: 0 })
+      expect(result.first[:child][:meta]).to eq({ call_index: 1 })
     end
   end
 end

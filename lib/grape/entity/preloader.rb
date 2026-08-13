@@ -99,12 +99,13 @@ module Grape
           next if association_objects.empty?
 
           exposures_with_options.group_by { |exposure, _options| exposure.preload_callback }.each do |callback, group|
-            callback_result = callback.call(association_objects, group.first[1])
+            first_options = group.first[1]
+            callback_result = callback.call(association_objects, first_options)
             unless callback_result.is_a?(Hash)
               raise ArgumentError, 'The :preload callback must return a Hash mapping objects to their preloaded values.'
             end
 
-            (options[PRELOAD_CACHE_KEY] ||= {})[callback] = callback_result
+            (first_options[PRELOAD_CACHE_KEY] ||= {})[callback] = callback_result
 
             group.each do |exposure, nested_options|
               next unless exposure.is_a?(Grape::Entity::Exposure::RepresentExposure)

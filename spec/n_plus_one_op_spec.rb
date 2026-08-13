@@ -179,5 +179,19 @@ RSpec.describe 'N+1 operation' do # rubocop:disable RSpec/DescribeClass
           .and make_database_queries(count: 2, matching: /book_tags_by_association/)
       end
     end
+
+    describe 'deferred serialization' do
+      it 'preloads nested callbacks when as_json is called after serializable: false' do
+        expect do
+          User::Entity.represent(
+            users,
+            serializable: false,
+            only: [{ books_by_association: %i[tags_by_callback] }]
+          ).as_json
+        end.to make_database_queries(count: 2)
+          .and make_database_queries(count: 1, matching: /user_books_by_association/)
+          .and make_database_queries(count: 1, matching: /book_tags_by_callback/)
+      end
+    end
   end
 end
