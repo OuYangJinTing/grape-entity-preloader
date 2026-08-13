@@ -1,8 +1,26 @@
 ## [Unreleased]
 
-- ⚠️ [Broken] Merge `:preload_association`, `:preload_callback`, and `:preload_condition` into a single `:preload` option.
-- ⚠️ [Broken] The `preload_condition` Proc signature has changed from `->(objects, options) { ... }` to `->(options) { ... }`. Passing `objects` was problematic for nested preloading because the condition is evaluated against the top-level objects rather than the objects at the current nesting level.
-- ⚠️ [Broken] The `preload_callback` Proc must now return a Hash mapping each object to its preloaded value, instead of an Array of objects. Preloaded values are cached in `options` and reused across exposures.
+## [1.0.0] - Unreleased
+
+### Added
+
+- Deduplicate identical preload callbacks.
+- Warn when skipping preloading for exposures with dynamic key or dynamic attr_path.
+
+### Changed
+
+- **Breaking**: Merge `:preload_association`, `:preload_callback`, and `:preload_condition` into a single `:preload` option on exposures. The option now accepts:
+  - a Symbol for an ActiveRecord association (`preload: :books`);
+  - a Proc for a callback (`preload: ->(objects, options) { ... }`);
+  - an Array combining the above with an optional condition Proc (`preload: [:books, ->(options) { ... }]` or `preload: [->(objects, options) { ... }, ->(options) { ... }]`).
+- **Breaking**: Require `preload_callback` Proc to return a Hash mapping each object to its preloaded value, instead of an Array of values. Preloaded values are cached in `options` and reused across exposures at the same nesting level.
+- Defer ActiveRecord version check to runtime.
+
+### Fixed
+
+- Keep consistent `attr_path` for nested exposures when preloader is enabled.
+- Disable preloader during nested entity serialization instead of at root `represent`, preventing duplicate preloads for deferred serialization.
+- Fix cyclic entity references during preload option extraction to avoid infinite recursion.
 
 ## [0.3.0] - 2026-03-17 UTC
 
