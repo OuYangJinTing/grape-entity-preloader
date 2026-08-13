@@ -71,7 +71,7 @@ module Grape
       def call
         return if objects.empty?
 
-        extract_preload_option(entity_class.root_exposures, options, associations)
+        extract_preload_option(entity_class.root_exposures, options, associations, [entity_class])
         execute_preload_associations
         execute_preload_callbacks
       end
@@ -127,7 +127,7 @@ module Grape
         end
       end
 
-      def extract_preload_option(exposures, options, associations) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
+      def extract_preload_option(exposures, options, associations, visited_entity_classes = []) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity,Metrics/MethodLength
         exposures.each do |exposure| # rubocop:disable Metrics/BlockLength
           key = exposure.instance_variable_get(:@key)
           # Dynamic key or attr_path are difficult to handle and little used, so skip preloading directly.
@@ -154,16 +154,21 @@ module Grape
               extract_preload_option(
                 exposure.nested_exposures,
                 nesting_options_for(options, key),
-                associations
+                associations,
+                visited_entity_classes
               )
             end
           elsif exposure.is_a?(Grape::Entity::Exposure::RepresentExposure) && associations[exposure.preload_association]
+            # Skip cyclic entity references to avoid infinite recursion during preload option extraction.
+            next if visited_entity_classes.include?(exposure.using_class)
+
             options.with_attr_path(key) do
               nested_association_chain.push(exposure.preload_association)
               extract_preload_option(
                 exposure.using_class.root_exposures,
                 nesting_options_for(options, key),
-                associations[exposure.preload_association]
+                associations[exposure.preload_association],
+                visited_entity_classes + [exposure.using_class]
               )
               nested_association_chain.pop
             end

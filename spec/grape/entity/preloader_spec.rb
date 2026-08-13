@@ -137,6 +137,39 @@ RSpec.describe Grape::Entity::Preloader do
     end
   end
 
+  describe 'circular entity references' do
+    it 'does not recurse infinitely when extracting preload options for mutually referencing entities' do
+      item_class = Struct.new(:id, :child, :parent)
+
+      child_entity = Class.new(Grape::Entity)
+      parent_entity = Class.new(Grape::Entity) do
+        expose :id
+        expose :child, using: child_entity, preload: :child
+      end
+      child_entity.class_eval do
+        expose :id
+        expose :parent, using: parent_entity, preload: :parent
+      end
+
+      parent = item_class.new(1, nil, nil)
+      child = item_class.new(2, nil, parent)
+      parent.child = child
+
+      options = Grape::Entity::Options.new({})
+      preloader = described_class.new(parent_entity, [parent], options)
+
+      expect do
+        preloader.send(
+          :extract_preload_option,
+          parent_entity.root_exposures,
+          options,
+          {},
+          [parent_entity]
+        )
+      end.not_to raise_error
+    end
+  end
+
   describe 'deferred serialization with serializable: false' do
     it 'does not preload nested exposures twice when as_json is called later' do
       item_class = Struct.new(:id, :child)
